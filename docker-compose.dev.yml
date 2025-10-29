@@ -1,0 +1,26 @@
+# Development override для docker-compose
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+      target: dev  # если добавите dev стадию в Dockerfile
+    volumes:
+      - ./api:/app:ro  # live reload исходников
+    environment:
+      - PYTHONPATH=/app
+      - RELOAD=true
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+    
+  indexer:
+    volumes:
+      - ./indexer:/app:ro  # live reload исходников
+    # Запускать вручную в dev режиме
+    command: ["python", "scanner.py"]
+    profiles: ["manual"]  # не запускать автоматически
+    
+  nginx:
+    ports:
+      - "8081:80"  # для разработки можно привязать к localhost
