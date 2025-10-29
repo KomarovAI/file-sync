@@ -1,9 +1,7 @@
-name: Filen Media Sync
+name: Filen Media Sync (Manual Only)
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 */6 * * *'  # Run every 6 hours
+  workflow_dispatch:  # Manual trigger only - no automatic schedule
 
 jobs:
   sync-media:
