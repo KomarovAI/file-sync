@@ -1,0 +1,99 @@
+name: VPS Media Server Deploy
+
+on:
+  push:
+    branches: [ vps-media-server ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+        
+    - name: Add VPS to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+        
+    - name: Deploy to VPS
+      run: |
+        ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} -p ${{ secrets.VPS_PORT }} << 'EOF'
+          set -e
+          
+          # Переходим в директорию проекта
+          cd /opt/file-sync || {
+            echo "Создаем директорию проекта..."
+            mkdir -p /opt/file-sync
+            cd /opt/file-sync
+            git clone -b vps-media-server https://github.com/KomarovAI/file-sync.git . || exit 1
+          }
+          
+          echo "Обновляем код..."
+          git fetch origin
+          git reset --hard origin/vps-media-server
+          
+          # Проверяем наличие .env
+          if [ ! -f .env ]; then
+            echo "Создаем .env файл..."
+            cp .env.example .env
+            echo "⚠️  НЕОБХОДИМО ОТРЕДАКТИРОВАТЬ .env ФАЙЛ!"
+            echo "API_TOKEN=генерируйте-случайный-токен" >> .env
+            echo "PUBLIC_BASE_URL=http://${{ secrets.VPS_HOST }}:8081" >> .env
+          fi
+          
+          # Останавливаем старые контейнеры
+          echo "Останавливаем сервисы..."
+          docker-compose down --remove-orphans || true
+          
+          # Собираем образы
+          echo "Собираем образы..."
+          docker-compose build --no-cache
+          
+          # Запускаем сервисы
+          echo "Запускаем сервисы..."
+          docker-compose up -d
+          
+          # Проверяем статус
+          sleep 10
+          docker-compose ps
+          
+          # Очищаем неиспользуемые образы
+          docker system prune -f
+          
+          echo "✅ Деплой завершен!"
+          echo "🌐 Медиа-сервер доступен по адресу: http://${{ secrets.VPS_HOST }}:8081"
+        EOF
+        
+    - name: Test deployment
+      run: |
+        echo "Проверяем доступность API..."
+        sleep 30
+        curl -f http://${{ secrets.VPS_HOST }}:8081/healthz || {
+          echo "❌ API недоступен"
+          exit 1
+        }
+        echo "✅ API работает!"
+        
+        curl -f http://${{ secrets.VPS_HOST }}:8081/api/media || {
+          echo "❌ Media API недоступен"
+          exit 1
+        }
+        echo "✅ Media API работает!"
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "🎉 Успешный деплой VPS Media Server!"
+          echo "🔗 URL: http://${{ secrets.VPS_HOST }}:8081"
+          echo "📊 API: http://${{ secrets.VPS_HOST }}:8081/api/media"
+        else
+          echo "❌ Ошибка деплоя!"
+        fi
