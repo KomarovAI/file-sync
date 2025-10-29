@@ -1,0 +1,54 @@
+name: VPS Media Sync (Manual)
+
+on:
+  workflow_dispatch:  # Manual trigger only
+    inputs:
+      force:
+        description: 'Force sync even if no changes'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync-from-vps:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Fetch media index from VPS
+        run: |
+          echo "Fetching media index from VPS..."
+          curl -fsSL https://artur789298.work.gd/media/index/media_links.json -o media_links.json
+          
+          # Pretty format the JSON
+          cat media_links.json | jq '.' > temp.json && mv temp.json media_links.json
+      
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet -- media_links.json && [ "${{ github.event.inputs.force }}" != "true" ]; then
+            echo "No changes detected"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected or force sync enabled"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add media_links.json
+          git commit -m "chore: sync media index from VPS (manual)"
+          git push
+      
+      - name: Summary
+        run: |
+          if [ "${{ steps.changes.outputs.has_changes }}" == "true" ]; then
+            echo "✅ Media index synchronized successfully"
+          else
+            echo "ℹ️ No changes to synchronize"
+          fi
