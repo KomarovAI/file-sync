@@ -1,5 +1,20 @@
 {
-  "media_files": [],
-  "last_updated": "",
+  "media_files": [
+    {
+      "id": "2028d87c985fc9d92c30cc165a0d4037",
+      "name": "39c93fa3-fc45-5e93-95d4-e05c6c4632ec.jpg",
+      "url": "https://artur789298.work.gd/media/images/39c93fa3-fc45-5e93-95d4-e05c6c4632ec.jpg",
+      "type": "image",
+      "mime_type": "image/jpeg",
+      "size": 85756,
+      "path": "/images/39c93fa3-fc45-5e93-95d4-e05c6c4632ec.jpg",
+      "md5": "56c010c9f04794624b6f336d5513f9f7",
+      "created": "2025-10-29T12:08:02.612640",
+      "modified": "2025-10-29T12:06:49"
+    }
+  ],
+  "total_files": 1,
+  "total_size": 85756,
+  "last_updated": "2025-10-29T12:20:00.152767",
   "version": "1.0"
 }
